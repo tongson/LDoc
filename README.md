@@ -1,18 +1,1 @@
-LDoc - A Lua Documentation Tool
-
-``fork'' of [LDoc](https://github.com/stevedonovan/LDoc)
-
-The only difference is the build system. This uses [Omnia](https://github.com/tongson/omnia), to compile LDoc into a standalone executable.
-
-
-#### Bundled software
-
-Software                                                                 | Version         | License
--------------------------------------------------------------------------|-----------------|---------
-[Lua](http://www.lua.org)                                                | 5.3.2           | MIT
-[luastatic](https://github.com/ers35/luastatic)                          | 0ef44ef         | CC0
-[LDoc](https://github.com/stevedonovan/LDoc)                             | 1.4.3           | MIT
-[markdown](https://github.com/mpeterv/markdown)                          | 0.33            | MIT
-[luafilesystem](https://github.com/keplerproject/luafilesystem/)         | 1.6.3           | MIT
-[Penlight](https://github.com/stevedonovan/Penlight)                     | 1.3.2           | MIT
-
+All-in-one distribution of ldoc 1.4.6

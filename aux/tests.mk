@@ -1,4 +1,9 @@
+.POSIX:
+.SUFFIXES:
+export CC
+export NM
 NULSTRING:=
+CFLAGS_LRT= -lrt
 
 # FLAGS when compiling for an OpenWRT target.
 ifneq (,$(findstring openwrt,$(CC)))
@@ -15,6 +20,7 @@ endif
 # Replace --gc-sections with -dead-strip on Mac
 ifeq ($(shell aux/test-mac.sh $(CC)), APPLE)
   LDFLAGS:= -Wl,-dead_strip
+  CFLAGS_LRT:= $(NULSTRING)
 endif
 
 # Test for GCC LTO capability.
@@ -24,6 +30,7 @@ ifeq ($(shell aux/test-gcc47.sh $(CC)), GCC47)
     LDFLAGS+= -fwhole-program -flto
     RANLIB:= gcc-ranlib
     AR:= gcc-ar
+    NM:= gcc-nm
   endif
 endif
 
@@ -50,4 +57,22 @@ ifeq ($(shell aux/test-F_CLOSEM.sh $(CC)), true)
   pxDEFINES+= -DHAVE_FCNTL_CLOSEM
 endif
 
+ifeq ($(DEBUG), 1)
+  CCWARN:= -Wall
+  CFLAGS:= -O1 -fno-omit-frame-pointer -g
+  CCOPT:= $(NULSTRING)
+  LDFLAGS:= $(NULSTRING)
+  MAKEFLAGS:= $(NULSTRING)
+else
+  DEFINES+= -DNDEBUG
+endif
 
+ifeq ($(STATIC), 1)
+  LDFLAGS+= -static
+endif
+
+ifeq ($(ASAN), 1)
+  CFLAGS:= -fsanitize=address -O1 -fno-omit-frame-pointer -g
+  CCOPT:= $(NULSTRING)
+  LDFLAGS:= $(NULSTRING)
+endif

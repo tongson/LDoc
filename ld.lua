@@ -1,3 +1,4 @@
+#!/usr/bin/env lua
 ---------------
 -- ## ldoc, a Lua documentation generator.
 --
@@ -6,7 +7,7 @@
 --
 -- C/C++ support for Lua extensions is provided.
 --
--- Available from LuaRocks as 'ldoc' and as a [Zip file](http://stevedonovan.github.com/files/ldoc-1.4.2.zip)
+-- Available from LuaRocks as 'ldoc' and as a [Zip file](http://stevedonovan.github.com/files/ldoc-1.4.3.zip)
 --
 -- [Github Page](https://github.com/stevedonovan/ldoc)
 --
@@ -26,17 +27,18 @@ local tablex = require 'pl.tablex'
 
 -- Penlight compatibility
 utils.unpack = utils.unpack or unpack or table.unpack
-
 local append = table.insert
-
 local lapp = require 'pl.lapp'
+
+local version = '1.4.5'
 
 -- so we can find our private modules
 app.require_here()
 
 --- @usage
 local usage = [[
-ldoc, a documentation generator for Lua, vs 1.4.3
+ldoc, a documentation generator for Lua, vs ]]..version..[[
+
   -d,--dir (default doc) output directory
   -o,--output  (default 'index') output name
   -v,--verbose          verbose
@@ -56,13 +58,18 @@ ldoc, a documentation generator for Lua, vs 1.4.3
   -X,--not_luadoc break LuaDoc compatibility. Descriptions may continue after tags.
   -D,--define (default none) set a flag to be used in config.ld
   -C,--colon use colon style
+  -N,--no_args_infer  don't infer arguments from source
   -B,--boilerplate ignore first comment in source files
   -M,--merge allow module merging
   -S,--simple no return or params, no summary
   -O,--one one-column output layout
+  --date (default system) use this date in generated doc
   --dump                debug output dump
   --filter (default none) filter output as Lua data (e.g pl.pretty.dump)
   --tags (default none) show all references to given tags, comma-separated
+  --fatalwarnings non-zero exit status on any warning
+  --testing  reproducible build; no date or version on output
+
   <file> (string) source file or directory containing source
 
   `ldoc .` reads options from an `config.ld` file in same directory;
@@ -98,8 +105,6 @@ function ProjectMap:_init ()
    self.fieldname = 'type'
 end
 
-
-
 local lua, cc = lang.lua, lang.cc
 
 local file_types = {
@@ -117,7 +122,7 @@ local file_types = {
 ------- ldoc external API ------------
 
 -- the ldoc table represents the API available in `config.ld`.
-local ldoc = { charset = 'UTF-8' }
+local ldoc = { charset = 'UTF-8', version = version }
 
 local known_types, kind_names = {}
 
@@ -141,6 +146,7 @@ local function setup_kinds ()
    ModuleMap:add_kind(lookup('function','Functions','Parameters'))
    ModuleMap:add_kind(lookup('table','Tables','Fields'))
    ModuleMap:add_kind(lookup('field','Fields'))
+   ModuleMap:add_kind(lookup('type','Types'))
    ModuleMap:add_kind(lookup('lfunction','Local Functions','Parameters'))
    ModuleMap:add_kind(lookup('annotation','Issues'))
 
@@ -232,7 +238,10 @@ local ldoc_contents = {
    'no_return_or_parms','no_summary','full_description','backtick_references', 'custom_see_handler',
    'no_space_before_args','parse_extra','no_lua_ref','sort_modules','use_markdown_titles',
    'unqualified', 'custom_display_name_handler', 'kind_names', 'custom_references',
-   'dont_escape_underscore','global_lookup','prettify_files','convert_opt'
+   'dont_escape_underscore','global_lookup','prettify_files','convert_opt', 'user_keywords',
+   'postprocess_html',
+   'custom_css','version',
+   'no_args_infer'
 }
 ldoc_contents = tablex.makeset(ldoc_contents)
 
@@ -417,6 +426,7 @@ local process_file_list = tools.process_file_list
 
 setup_package_base()
 
+override 'no_args_infer'
 override 'colon'
 override 'merge'
 override 'not_luadoc'
@@ -503,7 +513,7 @@ end
 -- (this also will initialize the code prettifier used)
 override ('format','plain')
 override 'pretty'
-ldoc.markup = markup.create(ldoc, args.format,args.pretty)
+ldoc.markup = markup.create(ldoc, args.format, args.pretty, ldoc.user_keywords)
 
 ------ 'Special' Project-level entities ---------------------------------------
 -- Examples and Topics do not contain code to be processed for doc comments.
@@ -555,6 +565,8 @@ if type(ldoc.examples) == 'table' then
    prettify_source_files(ldoc.examples,"example")
 end
 
+ldoc.is_file_prettified = {}
+
 if ldoc.prettify_files then
    local files = List()
    local linemap = {}
@@ -567,6 +579,23 @@ if ldoc.prettify_files then
       end
       linemap[F.filename] = ls
    end
+
+   if type(ldoc.prettify_files) == 'table' then
+      files = tools.expand_file_list(ldoc.prettify_files, '*.*')
+   elseif type(ldoc.prettify_files) == 'string' then
+      -- the gotcha is that if the person has a folder called 'show', only the contents
+      -- of that directory will be converted.  So, we warn of this amibiguity
+      if ldoc.prettify_files == 'show' then
+         -- just fall through with all module files collected above
+         if path.exists 'show' then
+            print("Notice: if you only want to prettify files in `show`, then set prettify_files to `show/`")
+         end
+      else
+         files = tools.expand_file_list({ldoc.prettify_files}, '*.*')
+      end
+   end
+
+   ldoc.is_file_prettified = tablex.makeset(files)
    prettify_source_files(files,"file",linemap)
 end
 
@@ -745,14 +774,15 @@ end
 local builtin_style, builtin_template = match_bang(args.style),match_bang(args.template)
 if builtin_style or builtin_template then
    -- '!' here means 'use built-in templates'
-   local tmpdir = path.join(path.is_windows and os.getenv('TMP') or '/tmp','ldoc')
+   local user = path.expanduser('~'):gsub('[/\\: ]','_')
+   local tmpdir = path.join(path.is_windows and os.getenv('TMP') or '/tmp','ldoc'..user)
    if not path.isdir(tmpdir) then
       lfs.mkdir(tmpdir)
    end
    local function tmpwrite (name)
       local ok,text = pcall(require,'ldoc.html.'..name:gsub('%.','_'))
       if not ok then
-         quit("cannot find builtin template "..name)
+         quit("cannot find builtin template "..name.." ("..text..")")
       end
       if not utils.writefile(path.join(tmpdir,name),text) then
          quit("cannot write to temp directory "..tmpdir)
@@ -780,7 +810,20 @@ ldoc.modules = module_list
 ldoc.title = ldoc.title or args.title
 ldoc.project = ldoc.project or args.project
 ldoc.package = args.package:match '%a+' and args.package or nil
-ldoc.updatetime = os.date("%Y-%m-%d %H:%M:%S")
+
+local source_date_epoch = os.getenv("SOURCE_DATE_EPOCH")
+if args.testing then
+   ldoc.updatetime = "2015-01-01 12:00:00"
+   ldoc.version = 'TESTING'
+elseif source_date_epoch == nil then
+  if args.date == 'system' then
+    ldoc.updatetime = os.date("%Y-%m-%d %H:%M:%S")
+  else
+    ldoc.updatetime = args.date
+  end
+else
+  ldoc.updatetime = os.date("!%Y-%m-%d %H:%M:%S",source_date_epoch)
+end
 
 local html = require 'ldoc.html'
 
@@ -789,4 +832,8 @@ html.generate_output(ldoc, args, project)
 if args.verbose then
    print 'modules'
    for k in pairs(module_list.by_name) do print(k) end
+end
+
+if args.fatalwarnings and Item.had_warning then
+   os.exit(1)
 end

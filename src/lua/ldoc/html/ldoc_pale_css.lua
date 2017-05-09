@@ -8,7 +8,7 @@ body {
 }
 
 code, tt { font-family: monospace; font-size: 1.1em; }
-span.parameter { font-family:"Monaco", monospace; }
+span.parameter { font-family:monospace; }
 span.parameter:after { content:":"; }
 span.types:before { content:"("; }
 span.types:after { content:")"; }
@@ -43,10 +43,10 @@ hr {
 
 blockquote { margin-left: 3em; }
 
-ul { list-style-type: square; }
+ul { list-style-type: disc; }
 
 p.name {
-    font-family: "Monaco", monospace, "Andale Mono";
+    font-family: "Andale Mono", monospace;
     padding-top: 1em;
 }
 
@@ -126,7 +126,7 @@ table.index td { text-align: left; vertical-align: top; }
 #content {
     margin-left: 14em;
     padding: 1em;
-    width: 1024px;
+    width: 700px;
     border-left: 2px solid #cccccc;
    // border-right: 2px solid #cccccc;
     background-color: #ffffff;
@@ -165,7 +165,7 @@ table.index td { text-align: left; vertical-align: top; }
         display: none;
     }
     pre.example {
-        font-family: "Monaco", monospace, "Andale Mono";
+        font-family: "Andale Mono", monospace;
         font-size: 10pt;
         page-break-inside: avoid;
     }

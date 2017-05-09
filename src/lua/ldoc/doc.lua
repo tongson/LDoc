@@ -25,7 +25,7 @@ local TAG_MULTI,TAG_ID,TAG_SINGLE,TAG_TYPE,TAG_FLAG,TAG_MULTI_LINE = 'M','id','S
 local known_tags = {
    param = 'M', see = 'M', comment = 'M', usage = 'ML', ['return'] = 'M', field = 'M', author='M',set='M';
    class = 'id', name = 'id', pragma = 'id', alias = 'id',
-   copyright = 'S', summary = 'S', description = 'S', release = 'S', license = 'S', added = 'S',
+   copyright = 'S', summary = 'S', description = 'S', release = 'S', license = 'S',
    fixme = 'S', todo = 'S', warning = 'S', raise = 'S', charset = 'S', within = 'S',
    ['local'] = 'N', export = 'N', private = 'N', constructor = 'N', static = 'N',include = 'S',
    -- project-level
@@ -57,7 +57,7 @@ known_tags._presentation_names = {
 }
 
 known_tags._module_info = {
-   'copyright','release','license','author', 'added',
+   'copyright','release','license','author'
 }
 
 local see_reference_handlers = {}
@@ -701,10 +701,10 @@ function Item:finish()
                   k = k + 1
                   if k > #fargs then
                      if not varargs then
-                 --       self:warning("extra param with no formal argument: "..quote(pname))
+                        self:warning("extra param with no formal argument: "..quote(pname))
                      end
                   elseif pname ~= fargs[k] then
---                     self:warning("param and formal argument name mismatch: "..quote(pname).." "..quote(fargs[k]))
+                     self:warning("param and formal argument name mismatch: "..quote(pname).." "..quote(fargs[k]))
                   end
                end
             end

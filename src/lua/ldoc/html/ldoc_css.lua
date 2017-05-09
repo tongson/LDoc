@@ -43,7 +43,7 @@ hr {
 
 blockquote { margin-left: 3em; }
 
-ul { list-style-type: square; }
+ul { list-style-type: disc; }
 
 p.name {
     font-family: "Andale Mono", monospace;

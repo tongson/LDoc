@@ -1,5 +1,4 @@
-.PHONY: default
-default: development
+.DEFAULT_GOAL: release
 EXE:= ld
 SRC:=
 SRC_DIR:= ldoc ldoc/builtin ldoc/html
